@@ -948,7 +948,7 @@ class Twitch:
     @task_wrapper(critical=True)
     async def _maintenance_task(self) -> None:
         now = datetime.now(timezone.utc)
-        next_period = now + timedelta(hours=1)
+        next_period = now + timedelta(minutes=self.settings.refresh_rate)
         while True:
             # exit if there's no need to repeat the loop
             now = datetime.now(timezone.utc)

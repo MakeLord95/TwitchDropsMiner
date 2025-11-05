@@ -1553,6 +1553,7 @@ class _SettingsVars(TypedDict):
     language: StringVar
     priority_mode: StringVar
     tray_notifications: IntVar
+    refresh_rate: IntVar
 
 
 class SettingsPanel:
@@ -1578,6 +1579,9 @@ class SettingsPanel:
         if priority_mode not in self.PRIORITY_MODES:
             priority_mode = PriorityMode.PRIORITY_ONLY
             self._settings.priority_mode = priority_mode
+
+        refresh_rate = self._settings.refresh_rate
+
         self._vars: _SettingsVars = {
             "autostart": IntVar(master, 0),
             "language": StringVar(master, _.current),
@@ -1586,6 +1590,7 @@ class SettingsPanel:
             "dark_mode": IntVar(master, int(self._settings.dark_mode)),
             "priority_mode": StringVar(master, self.PRIORITY_MODES[priority_mode]),
             "tray_notifications": IntVar(master, self._settings.tray_notifications),
+            "refresh_rate": IntVar(master, refresh_rate),
         }
         self._game_names: set[str] = set()
         master.rowconfigure(0, weight=1)
@@ -1656,6 +1661,22 @@ class SettingsPanel:
             textvariable=self._vars["priority_mode"],
             values=list(self.PRIORITY_MODES.values()),
         ).grid(column=1, row=irow, sticky="w")
+
+        ttk.Label(
+            checkboxes_frame, text="Refresh Rate (minutes):"
+        ).grid(column=0, row=(irow := irow + 1), sticky="e")
+        refresh_rate_spinbox = ttk.Spinbox(
+            checkboxes_frame,
+            from_=10,
+            to=300,
+            increment=5,
+            textvariable=self._vars["refresh_rate"],
+            width=10,
+            command=self.update_refresh_rate,
+        )
+        refresh_rate_spinbox.grid(column=1, row=irow, sticky="w")
+        refresh_rate_spinbox.bind('<FocusOut>', lambda e: self.update_refresh_rate())
+        refresh_rate_spinbox.bind('<Return>', lambda e: self.update_refresh_rate())
 
         # proxy frame
         proxy_frame = ttk.Frame(center_frame2)
@@ -1766,6 +1787,20 @@ class SettingsPanel:
 
     def update_notifications(self) -> None:
         self._settings.tray_notifications = bool(self._vars["tray_notifications"].get())
+
+    def update_refresh_rate(self) -> None:
+        try:
+            value = self._vars["refresh_rate"].get()
+            # Clamp value between 5 and 60
+            value = max(5, min(60, value))
+            self._vars["refresh_rate"].set(value)
+            self._settings.refresh_rate = value
+            self._settings.alter()
+        except tk.TclError:
+            # Handle invalid input
+            self._vars["refresh_rate"].set(60)
+            self._settings.refresh_rate = 60
+            self._settings.alter()
 
     def _get_self_path(self) -> str:
         # NOTE: we need double quotes in case the path contains spaces
